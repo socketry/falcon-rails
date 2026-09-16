@@ -8,6 +8,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "agent-context"
+gem "agent-skills"
 
 group :maintenance, optional: true do
 	gem "bake-gem"
