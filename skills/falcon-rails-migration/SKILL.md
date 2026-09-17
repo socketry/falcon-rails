@@ -9,26 +9,35 @@ Treat the migration as a server and concurrency-model change, not just a Gemfile
 
 ## Migration Approach
 
-1. Establish a working baseline with the current server and tests.
-2. Inventory the current server contract: commands, bind address, port, TLS termination, worker count, preload behavior, timeouts, health checks, graceful shutdown, and deployment manifests.
-3. Identify features sensitive to the server runtime, including streaming responses, WebSockets or Action Cable, request-local state, background jobs, and long-running requests.
-4. Add `falcon-rails` and boot Falcon locally while retaining the existing server as a fallback.
-5. Exercise ordinary requests and every server-sensitive feature before changing production configuration.
-6. Audit code for assumptions that break under fiber concurrency: thread-local request state, shared mutable objects, unbounded task creation, blocking native or CPU-heavy work, and resources held across waits.
-7. Translate the production entrypoint to `falcon host` and `falcon.rb`, preserving the deployment contract rather than copying a generic configuration. Do not use `falcon serve` for production.
-8. Remove the previous server and its configuration only after the Falcon path is covered by tests and deployment checks.
+1. Update the application's dependencies in this order:
+
+	```bash
+	bundle add falcon
+	bundle remove puma
+	bundle add falcon-rails
+	bundle add agent-context
+	bundle add agent-skills
+	```
+
+	Install the context documentation and skills provided by those gems:
+
+	```bash
+	bundle exec bake agent:context:install
+	bundle exec bake agent:skills:install
+	```
+
+	Add `/.agents` to `.gitignore`; it contains generated skills which can be reinstalled from the bundled gems.
+
+2. Run the test suite, then inventory the previous server contract: commands, bind address, port, TLS termination, worker count, preload behavior, timeouts, health checks, graceful shutdown, and deployment manifests.
+3. Boot Falcon locally and exercise ordinary requests before changing production configuration.
+4. Identify and test features sensitive to the server runtime, including streaming responses, WebSockets or Action Cable, request-local state, background jobs, and long-running requests.
+5. Audit code for assumptions that break under fiber concurrency: thread-local request state, shared mutable objects, unbounded task creation, blocking native or CPU-heavy work, and resources held across waits.
+6. Translate the production entrypoint to `falcon host` and `falcon.rb`, preserving the deployment contract rather than copying a generic configuration. Do not use `falcon serve` for production.
+7. Remove obsolete Puma commands and configuration only after the Falcon path is covered by tests and deployment checks.
 
 ## Additional Context
 
-Install the relevant context:
-
-```bash
-bundle exec bake agent:context:install --gem falcon-rails
-bundle exec bake agent:context:install --gem falcon
-bundle exec bake agent:context:install --gem async
-```
-
-Read `.context/falcon-rails/getting-started.md`, `.context/falcon/rails-integration.md`, and `.context/falcon/deployment.md`. Read the Async best-practices and thread-safety context when reviewing application compatibility.
+From the context installed in step one, read `.context/falcon-rails/getting-started.md`, `.context/falcon/rails-integration.md`, and `.context/falcon/deployment.md`. Read the Async best-practices and thread-safety context when reviewing application compatibility.
 
 ## Verification
 
